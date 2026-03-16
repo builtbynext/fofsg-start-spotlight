@@ -7,17 +7,15 @@ import * as THREE from "three";
 import { ThreeCtx } from "./useThreeScene";
 import { StampMeshCtx } from "./useStampMeshes";
 
-const MAX_PAN_Y = 4;
-const MAX_PAN_X = 3;
-const MAX_TILT_RAD = (3 * Math.PI) / 180; // ±3°
-
 export function setupInteraction(
   ctx: ThreeCtx,
   stampCtx: StampMeshCtx,
   onSelectProject: (id: string) => void
 ): () => void {
-  const { renderer, camera, cameraOffsetRef, tiltRef } = ctx;
-  const { meshes, hoveredIdRef } = stampCtx;
+  const { renderer, camera, cameraOffsetRef } = ctx;
+  const { meshes, hoveredIdRef, panLimits } = stampCtx;
+  const MAX_PAN_X = panLimits.x;
+  const MAX_PAN_Y = panLimits.y;
   const canvas = renderer.domElement;
 
   const raycaster = new THREE.Raycaster();
@@ -32,17 +30,11 @@ export function setupInteraction(
     return hits.length > 0 ? (hits[0].object as THREE.Mesh) : null;
   }
 
-  // ── Mouse move: hover + tilt ────────────────────────────────────────────
+  // ── Mouse move: hover ───────────────────────────────────────────────────
   function onMouseMove(e: MouseEvent) {
     const hit = getHit(e.clientX, e.clientY);
     hoveredIdRef.value = hit ? hit.userData.projectId : null;
     canvas.style.cursor = hit ? "pointer" : "default";
-
-    const rect = canvas.getBoundingClientRect();
-    const nx = (e.clientX - rect.left) / rect.width - 0.5; // -0.5 … 0.5
-    const ny = (e.clientY - rect.top) / rect.height - 0.5;
-    tiltRef.x = -ny * MAX_TILT_RAD * 2;
-    tiltRef.y = -nx * MAX_TILT_RAD * 2;
   }
 
   // ── Wheel: pan ──────────────────────────────────────────────────────────

@@ -85,6 +85,52 @@ export function createStampTexture(
   return texture;
 }
 
+export function createHoverOverlayTexture(project: Project): THREE.CanvasTexture {
+  const SIZE = 512;
+  const canvas = document.createElement("canvas");
+  canvas.width = SIZE;
+  canvas.height = SIZE;
+  const ctx = canvas.getContext("2d")!;
+
+  // Dark gradient from transparent at top to nearly opaque at bottom
+  const gradient = ctx.createLinearGradient(0, SIZE * 0.35, 0, SIZE);
+  gradient.addColorStop(0, "rgba(0,0,0,0)");
+  gradient.addColorStop(0.5, "rgba(0,0,0,0.72)");
+  gradient.addColorStop(1, "rgba(0,0,0,0.92)");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, SIZE, SIZE);
+
+  const pad = 32;
+
+  // Category label — small caps, muted
+  ctx.fillStyle = "rgba(180, 170, 155, 0.75)";
+  ctx.font = "500 16px 'Helvetica Neue', Arial, sans-serif";
+  ctx.letterSpacing = "4px";
+  ctx.textAlign = "left";
+  ctx.fillText(project.category.toUpperCase(), pad, SIZE - 96);
+
+  // Project title
+  ctx.fillStyle = "#f0ede8";
+  ctx.font = "500 26px 'Helvetica Neue', Arial, sans-serif";
+  ctx.letterSpacing = "0px";
+  const title = project.title.length > 24 ? project.title.slice(0, 23) + "…" : project.title;
+  ctx.fillText(title, pad, SIZE - 60);
+
+  // Description snippet
+  ctx.fillStyle = "rgba(180, 170, 155, 0.6)";
+  ctx.font = "13px 'Helvetica Neue', Arial, sans-serif";
+  ctx.letterSpacing = "0px";
+  const snippet = project.description.length > 44
+    ? project.description.slice(0, 43) + "…"
+    : project.description;
+  ctx.fillText(snippet, pad, SIZE - 32);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.generateMipmaps = false;
+  texture.needsUpdate = true;
+  return texture;
+}
+
 export function createTitleTexture(): THREE.CanvasTexture {
   const W = 512;
   const H = 320;

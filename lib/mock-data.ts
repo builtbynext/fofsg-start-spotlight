@@ -1,6 +1,6 @@
 import { Project } from "./types";
 
-export const mockProjects: Project[] = [
+const BASE_PROJECTS: Project[] = [
   {
     id: "1",
     title: "Palette Drop",
@@ -96,3 +96,7 @@ export const mockProjects: Project[] = [
     created_at: "2024-05-03T00:00:00Z",
   },
 ];
+
+export const mockProjects: Project[] = Array.from({ length: 8 }, (_, repeat) =>
+  BASE_PROJECTS.map((p) => ({ ...p, id: `${p.id}-${repeat}` }))
+).flat();

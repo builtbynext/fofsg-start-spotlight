@@ -51,8 +51,6 @@ export function setupThreeScene(container: HTMLDivElement): {
 
     camera.position.x += (ctx.cameraOffsetRef.x - camera.position.x) * 0.08;
     camera.position.y += (ctx.cameraOffsetRef.y - camera.position.y) * 0.08;
-    camera.rotation.x += (ctx.tiltRef.x - camera.rotation.x) * 0.06;
-    camera.rotation.y += (ctx.tiltRef.y - camera.rotation.y) * 0.06;
 
     ctx.onFrame?.();
 

@@ -6,22 +6,16 @@
 import * as THREE from "three";
 import { Project } from "@/lib/types";
 import { ThreeCtx } from "./useThreeScene";
-import { createStampTexture, createTitleTexture } from "./stampTexture";
+import { createStampTexture, createTitleTexture, createHoverOverlayTexture } from "./stampTexture";
 
-// Matches the CSS gallery stagger rhythm
-const ROTATIONS = [-2.1, 1.4, -0.8, 2.3, -1.6, 0.9, -2.4, 1.1];
-
-const COLS = 4;
 const COL_SPACING = 2.2;
 const ROW_SPACING = 2.8;
-
-// Stagger Y offsets per column index (0-based)
-const COL_Y_OFFSET = [0, 0.5, 0.25, 0, 0.5, 0.25];
 
 export type StampMeshCtx = {
   meshes: THREE.Mesh[];
   hoveredIdRef: { value: string | null };
-  /** Set as ctx.onFrame to drive scale/rotation lerp each rAF tick */
+  panLimits: { x: number; y: number };
+  /** Set as ctx.onFrame to drive scale/opacity lerp each rAF tick */
   onFrame: () => void;
   dispose: () => void;
 };
@@ -30,7 +24,27 @@ export async function setupStampMeshes(
   ctx: ThreeCtx,
   projects: Project[]
 ): Promise<StampMeshCtx> {
-  // Pre-load all images in parallel
+  // ── Derive how many columns fit the visible viewport ─────────────────────
+  // Visible world-height at z=0 from a 50° FOV camera at z=12
+  const fovY = (50 * Math.PI) / 180;
+  const visibleH = 2 * Math.tan(fovY / 2) * ctx.camera.position.z;
+  const aspect = ctx.renderer.domElement.clientWidth / ctx.renderer.domElement.clientHeight;
+  const visibleW = visibleH * aspect;
+
+  // Fill visible width + 1 extra column on each side so edges are always populated
+  const COLS = Math.max(4, Math.round(visibleW / COL_SPACING) + 2);
+  const ROWS = Math.ceil(projects.length / COLS);
+
+  const gridHalfW = ((COLS - 1) * COL_SPACING) / 2;
+  const gridHalfH = ((ROWS - 1) * ROW_SPACING) / 2;
+
+  // Pan limits: allow camera to reach the outermost stamps (minus half viewport)
+  const panLimits = {
+    x: Math.max(0, gridHalfW - visibleW / 2 + COL_SPACING),
+    y: Math.max(0, gridHalfH - visibleH / 2 + ROW_SPACING),
+  };
+
+  // ── Pre-load all images in parallel ──────────────────────────────────────
   const images = await Promise.all(
     projects.map(
       (p) =>
@@ -45,35 +59,42 @@ export async function setupStampMeshes(
   );
 
   const meshes: THREE.Mesh[] = [];
+  const overlays: THREE.Mesh[] = [];
   const hoveredIdRef = { value: null as string | null };
 
   projects.forEach((project, i) => {
     const col = i % COLS;
     const row = Math.floor(i / COLS);
 
+    const stampX = col * COL_SPACING - gridHalfW;
+    const stampY = -(row * ROW_SPACING) + gridHalfH;
+
+    // ── Stamp mesh ──────────────────────────────────────────────────────────
     const texture = createStampTexture(project, images[i]);
     const geo = new THREE.PlaneGeometry(1.6, 1.6);
     const mat = new THREE.MeshBasicMaterial({ map: texture });
     const mesh = new THREE.Mesh(geo, mat);
-
-    // World-space position
-    const totalWidth = (COLS - 1) * COL_SPACING;
-    mesh.position.x = col * COL_SPACING - totalWidth / 2;
-    mesh.position.y = -(row * ROW_SPACING) + (COL_Y_OFFSET[col] ?? 0);
-
-    // Slight rotation like stamp gallery
-    mesh.rotation.z = (ROTATIONS[i % ROTATIONS.length] * Math.PI) / 180;
-
+    mesh.position.set(stampX, stampY, 0);
     mesh.userData.projectId = project.id;
-    mesh.userData.baseRotZ = mesh.rotation.z;
-
     ctx.scene.add(mesh);
     meshes.push(mesh);
+
+    // ── Hover overlay mesh ──────────────────────────────────────────────────
+    const overlayTexture = createHoverOverlayTexture(project);
+    const overlayGeo = new THREE.PlaneGeometry(1.6, 1.6);
+    const overlayMat = new THREE.MeshBasicMaterial({
+      map: overlayTexture,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+    });
+    const overlayMesh = new THREE.Mesh(overlayGeo, overlayMat);
+    overlayMesh.position.set(stampX, stampY, 0.02);
+    ctx.scene.add(overlayMesh);
+    overlays.push(overlayMesh);
   });
 
-  // Title mesh — centered between the two rows, slightly behind stamps
-  // centerX = 0 (symmetric grid), centerY = midpoint between row 0 and row 1
-  const centerY = -(ROW_SPACING / 2) + 0.1;
+  // Title mesh — centered in the grid, slightly behind stamps
   const titleTexture = createTitleTexture();
   const titleGeo = new THREE.PlaneGeometry(2.4, 1.5);
   const titleMat = new THREE.MeshBasicMaterial({
@@ -82,27 +103,35 @@ export async function setupStampMeshes(
     depthWrite: false,
   });
   const titleMesh = new THREE.Mesh(titleGeo, titleMat);
-  titleMesh.position.set(0, centerY, -0.05);
+  titleMesh.position.set(0, 0, -0.05);
   ctx.scene.add(titleMesh);
 
   function onFrame() {
-    meshes.forEach((mesh) => {
+    meshes.forEach((mesh, i) => {
       const isHovered = mesh.userData.projectId === hoveredIdRef.value;
-      const targetScale = isHovered ? 1.08 : 1.0;
-      const targetRotZ = isHovered ? 0 : mesh.userData.baseRotZ;
 
+      // Scale lerp
+      const targetScale = isHovered ? 1.08 : 1.0;
       mesh.scale.x += (targetScale - mesh.scale.x) * 0.12;
       mesh.scale.y += (targetScale - mesh.scale.y) * 0.12;
-      mesh.rotation.z += (targetRotZ - mesh.rotation.z) * 0.12;
+
+      // Overlay opacity lerp
+      const mat = overlays[i].material as THREE.MeshBasicMaterial;
+      mat.opacity += ((isHovered ? 1.0 : 0.0) - mat.opacity) * 0.14;
     });
   }
 
   function dispose() {
-    meshes.forEach((mesh) => {
+    meshes.forEach((mesh, i) => {
       ctx.scene.remove(mesh);
       mesh.geometry.dispose();
       (mesh.material as THREE.MeshBasicMaterial).map?.dispose();
       (mesh.material as THREE.MeshBasicMaterial).dispose();
+
+      ctx.scene.remove(overlays[i]);
+      overlays[i].geometry.dispose();
+      (overlays[i].material as THREE.MeshBasicMaterial).map?.dispose();
+      (overlays[i].material as THREE.MeshBasicMaterial).dispose();
     });
     ctx.scene.remove(titleMesh);
     titleGeo.dispose();
@@ -110,5 +139,5 @@ export async function setupStampMeshes(
     titleMat.dispose();
   }
 
-  return { meshes, hoveredIdRef, onFrame, dispose };
+  return { meshes, hoveredIdRef, panLimits, onFrame, dispose };
 }
