@@ -62,33 +62,8 @@ export default function StampCanvas({ projects, onSelectProject, dimmed }: Props
         pointerEvents: dimmed ? "none" : "auto",
       }}
     >
-      {/* Three.js canvas mounts here */}
+      {/* Three.js canvas — title label is rendered as a mesh inside the scene */}
       <div ref={containerRef} className="absolute inset-0" />
-
-      {/* Floating center title — HTML overlay */}
-      <div
-        className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1 select-none"
-        style={{ zIndex: 10 }}
-      >
-        <p
-          className="text-[10px] font-semibold tracking-[0.35em] uppercase"
-          style={{ color: "var(--muted)", opacity: 0.6 }}
-        >
-          FOFSG
-        </p>
-        <p
-          className="font-serif text-3xl italic"
-          style={{ color: "var(--muted)", opacity: 0.45 }}
-        >
-          Side Projects
-        </p>
-        <p
-          className="text-[9px] tracking-widest uppercase"
-          style={{ color: "var(--muted)", opacity: 0.3, fontFamily: "var(--font-geist-mono)" }}
-        >
-          community builds
-        </p>
-      </div>
     </div>
   );
 }

@@ -6,7 +6,7 @@
 import * as THREE from "three";
 import { Project } from "@/lib/types";
 import { ThreeCtx } from "./useThreeScene";
-import { createStampTexture } from "./stampTexture";
+import { createStampTexture, createTitleTexture } from "./stampTexture";
 
 // Matches the CSS gallery stagger rhythm
 const ROTATIONS = [-2.1, 1.4, -0.8, 2.3, -1.6, 0.9, -2.4, 1.1];
@@ -71,6 +71,20 @@ export async function setupStampMeshes(
     meshes.push(mesh);
   });
 
+  // Title mesh — centered between the two rows, slightly behind stamps
+  // centerX = 0 (symmetric grid), centerY = midpoint between row 0 and row 1
+  const centerY = -(ROW_SPACING / 2) + 0.1;
+  const titleTexture = createTitleTexture();
+  const titleGeo = new THREE.PlaneGeometry(2.4, 1.5);
+  const titleMat = new THREE.MeshBasicMaterial({
+    map: titleTexture,
+    transparent: true,
+    depthWrite: false,
+  });
+  const titleMesh = new THREE.Mesh(titleGeo, titleMat);
+  titleMesh.position.set(0, centerY, -0.05);
+  ctx.scene.add(titleMesh);
+
   function onFrame() {
     meshes.forEach((mesh) => {
       const isHovered = mesh.userData.projectId === hoveredIdRef.value;
@@ -90,6 +104,10 @@ export async function setupStampMeshes(
       (mesh.material as THREE.MeshBasicMaterial).map?.dispose();
       (mesh.material as THREE.MeshBasicMaterial).dispose();
     });
+    ctx.scene.remove(titleMesh);
+    titleGeo.dispose();
+    titleMat.map?.dispose();
+    titleMat.dispose();
   }
 
   return { meshes, hoveredIdRef, onFrame, dispose };

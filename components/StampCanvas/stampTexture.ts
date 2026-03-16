@@ -84,3 +84,41 @@ export function createStampTexture(
   texture.needsUpdate = true;
   return texture;
 }
+
+export function createTitleTexture(): THREE.CanvasTexture {
+  const W = 512;
+  const H = 320;
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d")!;
+
+  // Fully transparent background — material handles it
+  ctx.clearRect(0, 0, W, H);
+
+  const cx = W / 2;
+
+  // "FOFSG" — small caps, wide tracking
+  ctx.fillStyle = "rgba(107, 103, 96, 0.55)";
+  ctx.font = "600 18px 'Helvetica Neue', Arial, sans-serif";
+  ctx.textAlign = "center";
+  ctx.letterSpacing = "10px";
+  ctx.fillText("FOFSG#25 - START", cx, H / 2 - 42);
+
+  // "Side Projects" — large italic serif
+  ctx.fillStyle = "rgba(107, 103, 96, 0.42)";
+  ctx.font = "italic 52px Georgia, 'Times New Roman', serif";
+  ctx.letterSpacing = "0px";
+  ctx.fillText("Design Journal", cx, H / 2 + 12);
+
+  // "community builds" — tiny monospace
+  ctx.fillStyle = "rgba(107, 103, 96, 0.28)";
+  ctx.font = "12px 'Courier New', monospace";
+  ctx.letterSpacing = "5px";
+  ctx.fillText("Field Notes", cx, H / 2 + 46);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.generateMipmaps = false;
+  texture.needsUpdate = true;
+  return texture;
+}
