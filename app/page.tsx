@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 import { Project } from "@/lib/types";
 import { mockProjects } from "@/lib/mock-data";
 import GalleryPage from "@/components/GalleryPage";
@@ -7,6 +7,12 @@ import GalleryPage from "@/components/GalleryPage";
 export const revalidate = 60;
 
 async function fetchApprovedProjects(): Promise<Project[]> {
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    console.warn("Falling back to mock data: Supabase env vars not set");
+    return mockProjects;
+  }
+
   const { data, error } = await supabase
     .from("projects")
     .select("*")
