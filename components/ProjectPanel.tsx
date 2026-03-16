@@ -89,7 +89,7 @@ export default function ProjectPanel({ project, onClose }: Props) {
                 <div className="stamp-panel-inner">
                   <div className="relative aspect-square w-full">
                     <Image
-                      src={`${project.cover_image_url}/800/800`}
+                      src={project.cover_image_url}
                       alt={project.title}
                       fill
                       sizes="320px"

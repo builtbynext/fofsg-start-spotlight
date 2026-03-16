@@ -1,47 +1,30 @@
-"use client";
-
-import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import dynamic from "next/dynamic";
+import { supabase } from "@/lib/supabase";
+import { Project } from "@/lib/types";
 import { mockProjects } from "@/lib/mock-data";
-import ProjectPanel from "@/components/ProjectPanel";
+import GalleryPage from "@/components/GalleryPage";
 
-const StampCanvas = dynamic(() => import("@/components/StampCanvas"), {
-  ssr: false,
-});
+export const revalidate = 60;
 
-function GalleryPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const selectedId = searchParams.get("project");
+async function fetchApprovedProjects(): Promise<Project[]> {
+  const { data, error } = await supabase
+    .from("projects")
+    .select("*")
+    .eq("status", "approved")
+    .order("created_at", { ascending: false });
 
-  const selectedProject =
-    mockProjects.find((p) => p.id === selectedId) ?? null;
-
-  const handleSelect = (id: string) => {
-    router.push(`/?project=${id}`, { scroll: false });
-  };
-
-  const handleClose = () => {
-    router.push("/", { scroll: false });
-  };
-
-  return (
-    <div className="relative min-h-screen overflow-hidden" style={{ background: "var(--background)" }}>
-      <StampCanvas
-        projects={mockProjects}
-        onSelectProject={handleSelect}
-        dimmed={!!selectedId}
-      />
-      <ProjectPanel project={selectedProject} onClose={handleClose} />
-    </div>
-  );
+  if (error || !data || data.length === 0) {
+    console.warn("Falling back to mock data:", error?.message ?? "no data");
+    return mockProjects;
+  }
+  return data as Project[];
 }
 
-export default function Home() {
+export default async function Home() {
+  const projects = await fetchApprovedProjects();
   return (
     <Suspense>
-      <GalleryPage />
+      <GalleryPage projects={projects} />
     </Suspense>
   );
 }

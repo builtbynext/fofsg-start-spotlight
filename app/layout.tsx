@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "FOFSG",
-  description: "A showcase of side projects by the community",
+  title: "Design Field Notes | FOFSG",
+  description: "A showcase of projects by FOFSG",
 };
 
 export default function RootLayout({
