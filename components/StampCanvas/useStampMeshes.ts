@@ -32,9 +32,14 @@ export async function setupStampMeshes(
   const aspect = ctx.renderer.domElement.clientWidth / ctx.renderer.domElement.clientHeight;
   const visibleW = visibleH * aspect;
 
-  // Fill visible width + 1 extra column on each side so edges are always populated
-  const COLS = Math.max(4, Math.round(visibleW / COL_SPACING) + 2);
-  const ROWS = Math.ceil(projects.length / COLS);
+  // Fill visible width + 1 extra column on each side; force odd so a column
+  // lands exactly at x=0, guaranteeing the title slot is centered on load.
+  const rawCols = Math.max(5, Math.round(visibleW / COL_SPACING) + 2);
+  const COLS = rawCols % 2 === 0 ? rawCols + 1 : rawCols;
+
+  // +1 accounts for the reserved title slot; force odd for y=0 centering too.
+  const rawRows = Math.ceil((projects.length + 1) / COLS);
+  const ROWS = rawRows % 2 === 0 ? rawRows + 1 : rawRows;
 
   const gridHalfW = ((COLS - 1) * COL_SPACING) / 2;
   const gridHalfH = ((ROWS - 1) * ROW_SPACING) / 2;
@@ -63,8 +68,9 @@ export async function setupStampMeshes(
   const overlays: THREE.Mesh[] = [];
   const hoveredIdRef = { value: null as string | null };
 
-  // Reserve the center grid slot for the title — stamps skip this index
-  const titleSlot = Math.floor(ROWS / 2) * COLS + Math.floor(COLS / 2);
+  // Both COLS and ROWS are odd, so (COLS-1)/2 and (ROWS-1)/2 are exact integers
+  // that map to world x=0, y=0 — the camera's initial look-at point.
+  const titleSlot = ((ROWS - 1) / 2) * COLS + (COLS - 1) / 2;
   const totalSlots = ROWS * COLS;
 
   // Walk grid slots, skipping titleSlot; consume one project per non-title slot
@@ -83,7 +89,7 @@ export async function setupStampMeshes(
 
     // ── Stamp mesh ──────────────────────────────────────────────────────────
     const texture = createStampTexture(project, img);
-    const geo = new THREE.PlaneGeometry(1.6, 1.6);
+    const geo = new THREE.PlaneGeometry(1.36, 1.36);
     const mat = new THREE.MeshBasicMaterial({ map: texture });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(stampX, stampY, 0);
@@ -93,7 +99,7 @@ export async function setupStampMeshes(
 
     // ── Hover overlay mesh ──────────────────────────────────────────────────
     const overlayTexture = createHoverOverlayTexture(project);
-    const overlayGeo = new THREE.PlaneGeometry(1.6, 1.6);
+    const overlayGeo = new THREE.PlaneGeometry(1.36, 1.36);
     const overlayMat = new THREE.MeshBasicMaterial({
       map: overlayTexture,
       transparent: true,
@@ -113,7 +119,7 @@ export async function setupStampMeshes(
   const titleY = -(titleRow * ROW_SPACING) + gridHalfH;
 
   const titleTexture = createTitleTexture();
-  const titleGeo = new THREE.PlaneGeometry(1.6, 1.6);
+  const titleGeo = new THREE.PlaneGeometry(1.36, 1.36);
   const titleMat = new THREE.MeshBasicMaterial({
     map: titleTexture,
     transparent: true,
